@@ -175,7 +175,7 @@ contract PackitMarket is IArbitrable, IEvidence {
 
 
     // Dispute resolution (funcitons for 'Arbitrable' from ERC 792)
-    function dispute(uint receiptID) external payable {
+    function dispute(uint receiptID, string memory _evidence) external payable {
         require(msg.value == arbitrator.arbitrationCost('')/2, "Need to pay the required dispute fee.");
 
         Receipt storage receipt = allTransactions[receiptID];
@@ -209,6 +209,8 @@ contract PackitMarket is IArbitrable, IEvidence {
             }
             
         }
+        
+        emit Evidence(arbitrator, _receiptID, msg.sender, _evidence);
     }
 
     function rule(uint _disputeID, uint _ruling) public override {
@@ -231,15 +233,5 @@ contract PackitMarket is IArbitrable, IEvidence {
         }
 
         emit Ruling(arbitrator, _disputeID, _ruling);
-    }
-
-    function submitEvidence(uint _receiptID, string memory _evidence) public {
-
-        Receipt storage receipt = allTransactions[_receiptID];
-
-        require(receipt.status == TxStatus.Disputed, "Can submit evidence only if the receipt is disputed and not resolved.");
-        require(msg.sender == receipt.customer || msg.sender == receipt.vendor, "Only the customer and the vendor can engage in sale.");
-
-        emit Evidence(arbitrator, _receiptID, msg.sender, _evidence);
     }
 }

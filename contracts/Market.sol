@@ -3,8 +3,10 @@
 pragma solidity ^0.7.0;
 
 import './Interfaces/IArbitrator.sol';      //See ERC 792
+import './Interfaces/IArbitrable.sol';
+import './Interfaces/IEvidence.sol';
 
-contract PackitMarket {
+contract PackitMarket is IArbitrable, IEvidence {
 
 
     //Data structures for the contract
@@ -52,8 +54,6 @@ contract PackitMarket {
     mapping(bytes32 => bool) productAvailability;       // productHash to bool (whether the product exists on Packit or not)
     mapping(uint => uint) public disputeToReceipt;      // disputeID to receiptID
 
-    event Ruling(IArbitrator indexed _arbitrator, uint indexed _disputeID, uint _ruling);
-
     receive() external payable {
 
     }
@@ -82,12 +82,13 @@ contract PackitMarket {
         return productDetails[_productHash].forSale && productDetails[_productHash].vendor == _vendor;
     }
 
-    function purchase(address payable _vendor, uint _price, bytes32 _productHash) public payable {
+    function purchase(address payable _vendor, uint _price, bytes32 _productHash,  string memory _metaevidence) public payable {
         
         require(msg.value == _price, "Amount sent is incorrect for the purchase.");
         require(verifyProduct(_vendor, _productHash), "The product does not match any product on Packit.");
 
         uint _receiptID = allTransactions.length;
+        emit MetaEvidence(_receiptID, _metaevidence);
 
         Receipt memory newReceipt = Receipt({
             vendor: _vendor,
@@ -194,6 +195,8 @@ contract PackitMarket {
             receipt.disputeID = arbitrator.createDispute{value: cost}(RulingOptionsNumber, '');
             disputeToReceipt[receipt.disputeID] = receiptID;
 
+            emit Dispute(arbitrator, receipt.disputeID, receiptID, receiptID);
+
         } else {
             require(receipt.status == TxStatus.Pending, "Can only dispute when the transaction is pending.");
             receipt.status = TxStatus.Disputed;
@@ -208,7 +211,7 @@ contract PackitMarket {
         }
     }
 
-    function rule(uint _disputeID, uint _ruling) public {
+    function rule(uint _disputeID, uint _ruling) public override {
         require(msg.sender == arbitratorAddress, "Only the arbitrator can give a ruling on the matter.");
         require(_ruling <= RulingOptionsNumber, "Invalid ruling option.");
         
@@ -226,5 +229,17 @@ contract PackitMarket {
             bool success = receipt.vendor.send(amount);
             require(success);
         }
+
+        emit Ruling(arbitrator, _disputeID, _ruling);
+    }
+
+    function submitEvidence(uint _receiptID, string memory _evidence) public {
+
+        Receipt storage receipt = allTransactions[_receiptID];
+
+        require(receipt.status == TxStatus.Disputed, "Can submit evidence only if the receipt is disputed and not resolved.");
+        require(msg.sender == receipt.customer || msg.sender == receipt.vendor, "Only the customer and the vendor can engage in sale.");
+
+        emit Evidence(arbitrator, _receiptID, msg.sender, _evidence);
     }
 }

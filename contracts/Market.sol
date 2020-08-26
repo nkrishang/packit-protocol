@@ -174,7 +174,7 @@ contract PackitMarket is IArbitrable, IEvidence {
     }
 
 
-    // Dispute resolution (funcitons for 'Arbitrable' from ERC 792)
+    // Dispute resolution (functions for 'Arbitrable' from ERC 792)
     function dispute(uint receiptID, string memory _evidence) external payable {
         require(msg.value == arbitrator.arbitrationCost('')/2, "Need to pay the required dispute fee.");
 
@@ -210,7 +210,7 @@ contract PackitMarket is IArbitrable, IEvidence {
             
         }
         
-        emit Evidence(arbitrator, _receiptID, msg.sender, _evidence);
+        emit Evidence(arbitrator, receiptID, msg.sender, _evidence);
     }
 
     function rule(uint _disputeID, uint _ruling) public override {
